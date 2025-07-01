@@ -52,7 +52,7 @@ async def upload_pdfs(files: List[UploadFile] = File(...)):
         return {
             "status": "success",
             "documents_processed": len(documents),
-            "average_chunk_size": sum(len(d.page_content) for d in documents)/len(documents)
+            "average_chunk_size": sum(len(d.page_content) for d in documents) / len(documents)
         }
     except Exception as e:
         logger.error(f"Upload failed: {str(e)}")
@@ -67,29 +67,28 @@ async def ask_question(data: Dict):
             raise HTTPException(400, "Session ID is required")
         if not vector_store.db:
             raise HTTPException(400, "Please upload documents first")
-        
+
         session_id = data["session_id"]
         question = data["question"]
-        
+
         if session_id not in chat_histories:
             chat_histories[session_id] = []
-        
+
         chat_histories[session_id].append({"role": "user", "content": question})
-        
+
         response = get_rag_response(question, vector_store, chat_histories[session_id])
-        
+
         chat_histories[session_id].append({"role": "assistant", "content": response["answer"]})
-        
+
         if len(chat_histories[session_id]) > 20:
             chat_histories[session_id] = chat_histories[session_id][-20:]
-        
+
         return {
             "answer": response["answer"],
-            "sources": response["sources"],
-            "usage": response["usage"],
+            "suggested_prompts": response.get("suggested_prompts", []),
             "session_id": session_id
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
